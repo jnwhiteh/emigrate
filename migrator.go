@@ -2,6 +2,7 @@ package emigrate
 
 import (
 	"database/sql"
+	"fmt"
 	"sort"
 )
 
@@ -24,26 +25,37 @@ func (m *Migrator) CurrentVersion() (int64, error) {
 	return currentVersion, err
 }
 
+func (m *Migrator) MaxVersion() int64 {
+	var max int64 = 0
+	for _, migration := range m.migrations {
+		if migration.Version() >= max {
+			max = migration.Version()
+		}
+	}
+	return max
+}
+
 func (m *Migrator) setVersion(tx *sql.Tx, version int64) error {
 	query := QuerySetVersion(version)
 	_, err := tx.Exec(query)
 	return err
 }
 
-func (m *Migrator) Upgrade() error {
-	maxVersion := int64(len(m.migrations))
+func (m *Migrator) Upgrade() ([]string, error) {
+	maxVersion := m.MaxVersion()
 	return m.UpgradeToVersion(maxVersion)
 }
 
 // Migration currently only supports upgrades
-func (m *Migrator) UpgradeToVersion(version int64) error {
+func (m *Migrator) UpgradeToVersion(version int64) ([]string, error) {
 	current, err := m.CurrentVersion()
 	if err != nil {
-		return err
+		return nil, err
 	} else if version < current {
-		return DowngradesUnsupported
+		return nil, DowngradesUnsupported
 	} else if current == version {
-		return nil
+		message := "emigrate: database already at current version"
+		return []string{message}, nil
 	}
 
 	sort.Sort(byVersion(m.migrations))
@@ -52,19 +64,21 @@ func (m *Migrator) UpgradeToVersion(version int64) error {
 	if current > 0 {
 		idx, ok := byVersion(m.migrations).Search(current)
 		if !ok {
-			return MissingCurrentMigration
+			return nil, MissingCurrentMigration
 		}
 		migrations = migrations[idx+1:]
 	}
 
+	var log []string
 	for _, migration := range migrations {
 		err = m.apply(migration)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		log = append(log, fmt.Sprintf("emigrate: upgraded to version %d", migration.Version()))
 	}
 
-	return nil
+	return log, nil
 }
 
 func (m *Migrator) apply(migration Migration) error {
@@ -105,26 +119,26 @@ func (m *Migrator) apply(migration Migration) error {
 // Init ensures that the database is properly initialized to be managed by
 // emigrate. If the emigrate tables do not exist they are created.
 func (m *Migrator) Init() error {
+	// try to get the current version, may fail if table doesn't exist
+	current, err := m.CurrentVersion()
+	if err == nil {
+		return nil
+	}
+
+	// try to create the emigrate table
 	tx, err := m.db.Begin()
 	if err != nil {
 		return err
-	}
-
-	current, err := m.CurrentVersion()
-	if err == nil {
-
-		return nil
 	}
 
 	_, err = tx.Exec(QueryCreateTable)
 	if err != nil {
 		return err
 	}
-	err = m.setVersion(tx, 0)
+	_, err = tx.Exec(QueryInsertVersion)
 	if err != nil {
 		return err
 	}
-
 	err = tx.Commit()
 	if err != nil {
 		return err

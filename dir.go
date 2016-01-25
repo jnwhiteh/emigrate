@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 )
 
@@ -43,11 +44,14 @@ func (mf migrationFinder) getMigrations(dir string) ([]Migration, error) {
 		}
 		ms = append(ms, m)
 	}
+
+	// sort the migrations
+	sort.Sort(byVersion(ms))
 	return ms, nil
 }
 
 // nameRegexp defines the file name pattern to recognize migration files
-var nameRegexp = regexp.MustCompile(`^(\d+)_(up|down)\.([Ss][Qq][Ll])$`)
+var nameRegexp = regexp.MustCompile(`^(\d+)[-_](up|down)\.([Ss][Qq][Ll])$`)
 
 // nameInfo defines the information captured from parsing a file according to nameRegexp
 type nameInfo struct {

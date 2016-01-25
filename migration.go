@@ -19,9 +19,10 @@ var (
 var (
 	QueryGetCurrentVersion = `SELECT version FROM emigrate LIMIT 1`
 	QuerySetVersion        = func(version int64) string {
-		return fmt.Sprintf(`UPDATE migration SET version = %d`, version)
+		return fmt.Sprintf(`UPDATE emigrate SET version = %d`, version)
 	}
-	QueryCreateTable = `CREATE TABLE emigrate (version INTEGER)`
+	QueryCreateTable   = `CREATE TABLE emigrate (version INTEGER)`
+	QueryInsertVersion = `INSERT INTO emigrate (version) VALUES (0)`
 )
 
 type Migration interface {
