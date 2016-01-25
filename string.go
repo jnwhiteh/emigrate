@@ -13,6 +13,10 @@ type stringMigration struct {
 	down    string // the string to run when downgrading
 }
 
+func NewStringMigration(version int64, up, down string) Migration {
+	return &stringMigration{version, up, down}
+}
+
 func (m stringMigration) Version() int64 {
 	return m.version
 }

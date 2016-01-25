@@ -10,6 +10,10 @@ type functionMigration struct {
 	down    func(tx *sql.Tx) error // the function to run on downgrade
 }
 
+func NewFunctionMigration(version int64, up, down func(tx *sql.Tx) error) Migration {
+	return &functionMigration{version, up, down}
+}
+
 func (m *functionMigration) Version() int64 {
 	return m.version
 }
