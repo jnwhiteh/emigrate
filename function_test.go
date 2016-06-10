@@ -43,7 +43,7 @@ func TestUpgradeFunctionMigration(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	err := m.UpgradeToVersion(1)
+	_, err := m.UpgradeToVersion(1)
 	if err != nil {
 		t.Fatalf("Error during migration: %s", err)
 	}

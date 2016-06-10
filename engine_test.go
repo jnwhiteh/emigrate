@@ -49,7 +49,7 @@ func TestFailingToGetCurrentVersion(t *testing.T) {
 		WillReturnError(dbErr)
 	m := Migrator{db: db}
 
-	if result := m.UpgradeToVersion(99); result != dbErr {
+	if _, result := m.UpgradeToVersion(99); result != dbErr {
 		t.Errorf("Expected %v, got %v", dbErr, result)
 	}
 	mock.CloseTest(t)
@@ -60,7 +60,7 @@ func TestDowngradesUnsupported(t *testing.T) {
 	mock, m := setupVersioned(t, 99)
 
 	expected := DowngradesUnsupported
-	if result := m.UpgradeToVersion(1); result != expected {
+	if _, result := m.UpgradeToVersion(1); result != expected {
 		t.Errorf("Expected %v, got %v", expected, result)
 	}
 	mock.CloseTest(t)
@@ -70,7 +70,7 @@ func TestDBAtRequestedVersion(t *testing.T) {
 	t.Parallel()
 	mock, m := setupVersioned(t, 99)
 
-	if result := m.UpgradeToVersion(99); result != nil {
+	if _, result := m.UpgradeToVersion(99); result != nil {
 		t.Errorf("Expected %v, got %v", nil, result)
 	}
 	mock.CloseTest(t)
@@ -83,7 +83,7 @@ func TestMissingCurrentMigration(t *testing.T) {
 	// second migration is missing
 	m.migrations = migrationRange(1, 3)
 	expected := MissingCurrentMigration
-	if result := m.UpgradeToVersion(3); result != expected {
+	if _, result := m.UpgradeToVersion(3); result != expected {
 		t.Errorf("Expected %v, got %v", expected, result)
 	}
 	mock.CloseTest(t)
@@ -95,7 +95,7 @@ func TestFutureMigrationsApplied(t *testing.T) {
 	m.migrations = migrationRange(1, 2, 3, 4)
 
 	expectSetVersions(2, mock, 3, 4)
-	err := m.UpgradeToVersion(4)
+	_, err := m.UpgradeToVersion(4)
 	if err != nil {
 		t.Fatalf("Unexpected error during migration: %s", err.Error())
 	}
@@ -118,7 +118,7 @@ func TestFutureMigrationsAppliedAutomatic(t *testing.T) {
 	m.migrations = migrationRange(1, 2, 3, 4)
 
 	expectSetVersions(2, mock, 3, 4)
-	err := m.Upgrade()
+	_, err := m.Upgrade()
 	if err != nil {
 		t.Fatalf("Unexpected error during migration: %s", err.Error())
 	}
@@ -143,7 +143,7 @@ func TestMigrationStopsIfBeginFails(t *testing.T) {
 	dbErr := errors.New("begin failed")
 	mock.ExpectBegin().WillReturnError(dbErr)
 
-	result := m.UpgradeToVersion(2)
+	_, result := m.UpgradeToVersion(2)
 	if result != dbErr {
 		t.Errorf("Expected %v, got %v", dbErr, result)
 	}
@@ -160,7 +160,7 @@ func TestFailedMigrationHalts(t *testing.T) {
 	expected := errors.New("migrate failed")
 	m.migrations[1].(*mockMigration).err = expected
 
-	result := m.UpgradeToVersion(3)
+	_, result := m.UpgradeToVersion(3)
 	if result != expected {
 		t.Errorf("Expected %v, got %v", expected, result)
 	}
